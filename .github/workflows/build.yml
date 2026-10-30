@@ -38,7 +38,7 @@ jobs:
        - name: 查看裁剪后的原始体积
          run: ls -lh sing-box/sing-box
 
-       - name: (可选) 使用 UPX 进行极致无损压缩
+       - name: 使用 UPX 进行极致无损压缩
          run: |
            cp sing-box/sing-box ./sing-box-upx
            upx --best --lzma ./sing-box-upx
@@ -49,5 +49,4 @@ jobs:
          with:
            name: sing-box-alpine-tailored
            path: |
-             sing-box/sing-box
              ./sing-box-upx
