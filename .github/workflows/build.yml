@@ -1,0 +1,53 @@
+name: Build Tailored Sing-Box
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
+  push:
+    branches:
+      - master
+jobs:
+   build:
+     runs-on: ubuntu-latest
+     container:
+       image: alpine:latest     
+
+     steps:
+       - name: 安装 Alpine 依赖与 Go 环境
+         run: |
+           apk update
+           apk add --no-cache git go bash upx
+
+       - name: 克隆 sing-box 最新稳定源码
+         run: |
+           git clone --depth=1 https://github.com/SagerNet/sing-box.git
+           cd sing-box
+           echo "SING_BOX_VERSION=$(git describe --tags --always)" >> $GITHUB_ENV
+
+       - name: 针对 Alpine 进行纯静态瘦身编译
+         working-directory: sing-box
+         run: |
+           export CGO_ENABLED=0
+           go build -v \
+             -trimpath \
+             -tags "with_trojan,with_tproxy,with_quic" \
+             -ldflags="-s -w -buildid= -X github.com/sagernet/sing-box/constant.Version=${SING_BOX_VERSION}" \
+             -o sing-box \
+             ./cmd/sing-box
+
+       - name: 查看裁剪后的原始体积
+         run: ls -lh sing-box/sing-box
+
+       - name: (可选) 使用 UPX 进行极致无损压缩
+         run: |
+           cp sing-box/sing-box ./sing-box-upx
+           upx --best --lzma ./sing-box-upx
+           ls -lh ./sing-box-upx
+
+       - name: 上传构建产物 (Artifacts)
+         uses: actions/upload-artifact@v4
+         with:
+           name: sing-box-alpine-tailored
+           path: |
+             sing-box/sing-box
+             ./sing-box-upx
