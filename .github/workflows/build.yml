@@ -23,7 +23,7 @@ jobs:
           apk add --no-cache git go bash upx
 
       - name: Checkout codebase
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 克隆 sing-box 最新稳定源码
         run: |
