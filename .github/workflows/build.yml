@@ -1,62 +1,73 @@
-name: Build Tailored Sing-Box
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 0"
+name: Build Tailored Sing-Box 
+on:    
+  workflow_dispatch:          
+  schedule:   
+    - cron: "0 0 * * 0"       
   push:
-    branches:
+    branches: 
       - master
-jobs:
-   build:
-     runs-on: ubuntu-latest
-     container:
-       image: alpine:latest     
-
-     steps:
-       - name: 安装 Alpine 依赖与 Go 环境
-         run: |
-           apk update
-           apk add --no-cache git go bash upx
-           
-       - name: Checkout codebase
-         uses: actions/checkout@v4
-
-       - name: 克隆 sing-box 最新稳定源码
-         run: |
-           git clone --depth=1 https://github.com/SagerNet/sing-box.git
-           cd sing-box
-           echo "SING_BOX_VERSION=$(git describe --tags --always)" >> $GITHUB_ENV
-
-       - name: 针对 Alpine 进行纯静态瘦身编译
-         working-directory: sing-box
-         run: |
-           export CGO_ENABLED=0
-           go build -v \
-             -trimpath \
-             -tags "with_trojan,with_tproxy,with_quic" \
-             -ldflags="-s -w -buildid= -X github.com/sagernet/sing-box/constant.Version=${SING_BOX_VERSION}" \
-             -o sing-box \
-             ./cmd/sing-box
-
-       - name: 查看裁剪后的原始体积
-         run: ls -lh sing-box/sing-box
-
-       - name: 使用 UPX 进行极致无损压缩
-         run: |
-           cp sing-box/sing-box ./sing-box-upx
-           upx --best --lzma ./sing-box-upx
-           ls -lh ./sing-box-upx
-           
-       - name: "Commit and Push Binary to Repo"
-         run: |
-             git config --global --add safe.directory "*"
-             git config --global user.name "github-actions[bot]"
-             git config --global user.email "github-actions[bot]@users.noreply.github.com"
-             git add ./sing-box-upx
-             if git diff --staged --quiet; then
-               echo "二进制文件没有变化，无需更新。"
-             else                              
-               git commit -m "chore(bin): update sing-box binary (${{ env.SING_BOX_VERSION }})"
-               git push -f
-             fi
-               
+       
+permissions:  
+  contents: write             
+       
+jobs:  
+  build:      
+    runs-on: ubuntu-latest    
+    container:
+      image: alpine:latest    
+       
+    steps:    
+      - name: 安装 Alpine 依赖与 Go 环境   
+        run: |
+          apk update          
+          apk add --no-cache git go bash upx
+       
+      - name: Checkout codebase     
+        uses: actions/checkout@v4   
+       
+      - name: 克隆 sing-box 最新稳定源码   
+        run: |
+          git clone --depth=1 https://github.com/SagerNet/sing-box.git            
+          cd sing-box         
+          echo "SING_BOX_VERSION=$(git describe --tags --always)" >> $GITHUB_ENV  
+       
+      - name: 编译并压缩服务端版本 (Server)
+        working-directory: sing-box 
+        run: |
+          export CGO_ENABLED=0
+          go build -v \       
+            -trimpath \       
+            -tags "with_trojan,with_tproxy,with_quic" \    
+            -ldflags="-s -w -buildid= -X github.com/sagernet/sing-box/constant.Version=${SING_BOX_VERSION}" \   
+            -o ../sing-box-server \ 
+            ./cmd/sing-box    
+          cd ..
+          upx --best --lzma ./sing-box-server              
+          ls -lh ./sing-box-server  
+       
+      - name: 编译并压缩客户端版本 (Client)
+        working-directory: sing-box 
+        run: |
+          export CGO_ENABLED=0
+          go build -v \       
+            -trimpath \       
+            -tags "with_trojan,with_tproxy,with_quic,with_clash_api,with_utls" \  
+            -ldflags="-s -w -buildid= -X github.com/sagernet/sing-box/constant.Version=${SING_BOX_VERSION}" \   
+            -o ../sing-box-client \ 
+            ./cmd/sing-box    
+          cd ..
+          upx --best --lzma ./sing-box-client              
+          ls -lh ./sing-box-client  
+       
+      - name: 提交并推送到代码仓库  
+        run: |
+          git config --global --add safe.directory "*"     
+          git config --global user.name "github-actions[bot]"     
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"  
+          git add ./sing-box-server ./sing-box-client      
+          if git diff --staged --quiet; then
+            echo "二进制文件没有变化，无需更新。"          
+          else
+            git commit -m "chore(bin): update sing-box server & client (${{ env.SING_BOX_VERSION }})"    
+            git push -f       
+          fi
