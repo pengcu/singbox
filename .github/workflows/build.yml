@@ -30,7 +30,7 @@ jobs:
            export CGO_ENABLED=0
            go build -v \
              -trimpath \
-             -tags "with_trojan,with_tproxy" \
+             -tags "with_trojan,with_tproxy,with_quic" \
              -ldflags="-s -w -buildid= -X github.com/sagernet/sing-box/constant.Version=${SING_BOX_VERSION}" \
              -o sing-box \
              ./cmd/sing-box
