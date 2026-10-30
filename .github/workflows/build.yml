@@ -17,6 +17,9 @@ jobs:
          run: |
            apk update
            apk add --no-cache git go bash upx
+           
+       - name: Checkout codebase
+         uses: actions/checkout@v4
 
        - name: 克隆 sing-box 最新稳定源码
          run: |
@@ -53,6 +56,6 @@ jobs:
                echo "二进制文件没有变化，无需更新。"
              else                              
                git commit -m "chore(bin): update sing-box binary (${{ env.SING_BOX_VERSION }})"
-               git push origin HEAD:${{ github.ref_name }}
+               git push -f
              fi
                
