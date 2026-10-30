@@ -44,12 +44,15 @@ jobs:
            upx --best --lzma ./sing-box-upx
            ls -lh ./sing-box-upx
            
-       - name: "Create Release and Upload Assets"
-         uses: softprops/action-gh-release@v2
-         with:                                                                                       
-             tag_name: ${{ env.SING_BOX_VERSION }}                                                                                                 
-             name: "Sing-Box Tailored ${{ env.SING_BOX_VERSION }}"                                                                                 
-             draft: false
-             prerelease: false
-             files: |
-               ./sing-box-upx
+       - name: "Commit and Push Binary to Repo"
+         run: |
+             git config --global user.name "github-actions[bot]"
+             git config --global user.email "github-actions[bot]@users.noreply.github.com"
+             git add ./sing-box-upx
+             if git diff --staged --quiet; then
+               echo "二进制文件没有变化，无需更新。"
+             else                              
+               git commit -m "chore(bin): update sing-box binary (${{ env.SING_BOX_VERSION }})"
+               git push origin HEAD:${{ github.ref_name }}
+             fi
+               
